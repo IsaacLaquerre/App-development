@@ -2,6 +2,7 @@
 
 #include "imgui.h"
 
+#include <cstdio>
 #include <string>
 
 static bool show = true;
@@ -243,8 +244,17 @@ namespace MyApp
         ImGui::PopFont();
 
         // Externally drawn items
+
+        // Background (viewport) draw list
+        ImDrawList* viewport_draw_list = ImGui::GetBackgroundDrawList();
+        ImVec2 fps_text_pos = ImVec2(5, 5);
+        std::string fps_text_string = "FPS: " + std::to_string(io.Framerate) + "\n";
+        const char* fps_text = fps_text_string.c_str();
+        viewport_draw_list->AddText(fps_text_pos, IM_COL32(255, 255, 0, 255), fps_text);
+
+        // Window module draw list
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        ImVec2 fps_text_pos = ImVec2(mainViewportPos.x + 25 * resizeRatio, mainViewportPos.y + 25 * resizeRatio);
+
 
         ImGui::End();
         ImGui::PopStyleColor();
