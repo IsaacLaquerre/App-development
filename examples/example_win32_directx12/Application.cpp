@@ -48,6 +48,7 @@ namespace MyApp
     void RenderApp()
     {
         ImGuiIO& io = ImGui::GetIO(); (void)io;
+        io.ConfigViewportsNoAutoMerge = false;
 
         static ImFontConfig small_size_cfg;
         small_size_cfg.SizePixels = 15.0f;
@@ -158,9 +159,18 @@ namespace MyApp
         // Custom "1 main window" rendering
 
         // Style handling
-        ImGui::SetNextWindowPos(ImVec2(100, 50), ImGuiCond_Appearing);
-        ImGui::SetNextWindowSize(ImVec2((float)1080, 700), ImGuiCond_Appearing); //TODO: Scale depending on main window's size
+        ImVec2 mainViewportSize = ImGui::GetMainViewport()->Size;
+        ImVec2 mainViewportPos = ImGui::GetMainViewport()->Pos;
+        static float windowScale = 0.9f;
+        float windowSizeX = mainViewportSize.x * windowScale;
+        float windowSizeY = mainViewportSize.y * windowScale;
+        float windowPosX = mainViewportPos.x + (mainViewportSize.x - windowSizeX) / 2;
+        float windowPosY = mainViewportPos.y + (mainViewportSize.y - windowSizeY) / 2;
+        float resizeRatio = mainViewportSize.x / 1280;
+
         ImGui::PushStyleColor(ImGuiCol_WindowBg, RGBA::ToVec4(0.0f, 0.0f, 0.0f, 0.15f));
+        ImGui::SetNextWindowPos(ImVec2(windowPosX, windowPosY), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(windowSizeX, windowSizeY), ImGuiCond_Always);
 
         ImGuiStyle& style = ImGui::GetStyle();
         //style.TabRounding =  5.f;
@@ -220,61 +230,21 @@ namespace MyApp
 
         ImGui::SeparatorText("Color picker");
 
-        ImGui::BeginTable("ColorPick", 2);
+        ImGui::NewLine();
+        ImGui::BeginTable("Color picker", 2);
 
         ImGui::TableNextColumn();
-        ImGui::NewLine();
-        ImGui::NewLine();
-        ImGui::Text("R");
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_SliderGrab, RGBA::ToVec4(r_value, 0.0f, 0.0f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, RGBA::ToVec4(r_value, 0.0f, 0.0f, 1.0f));
-        ImGui::SliderFloat("##R", &r_value, 0.0f, 255.0f);
-        ImGui::PopStyleColor(2);
-        ImGui::NewLine();
-        ImGui::Text("G");
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_SliderGrab, RGBA::ToVec4(0.0f, g_value, 0.0f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, RGBA::ToVec4(0.0f, g_value, 0.0f, 1.0f));
-        ImGui::SliderFloat("##G", &g_value, 0.0f, 255.0f);
-        ImGui::PopStyleColor(2);
-        ImGui::NewLine();
-        ImGui::Text("B");
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_SliderGrab, RGBA::ToVec4(0.0f, 0.0f, b_value, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, RGBA::ToVec4(0.0f, 0.0f, b_value, 1.0f));
-        ImGui::SliderFloat("##B", &b_value, 0.0f, 255.0f);
-        ImGui::PopStyleColor(2);
+        static float my_color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-        ImGui::TableNextColumn();
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-        ImVec2 top_left = ImGui::GetCursorScreenPos();
-        float size = 350.0f;
-        ImVec2 sizeVec = ImVec2(150.0f, 150.0f);
-        ImVec2 bottom_right = ImVec2(top_left.x + size, top_left.y + size);
-        ImU32 color = IM_COL32(r_value, g_value, b_value, 255);
-        float rounding = 0.0f;
-
-        draw_list->AddRectFilled(top_left, bottom_right, color, rounding, ImDrawFlags_RoundCornersAll);
-        ImGui::Dummy(sizeVec);
-
-        ImGui::PushFont(DroidSans_large);
-        char* sample_text = "Sample Text";
-        ImVec2 text_size = ImGui::CalcTextSize(sample_text);
-        ImVec2 text_pos = ImVec2(
-            top_left.x + (size - text_size.x) * 0.5f,
-            top_left.y + (size - text_size.y) * 0.5f
-        );
-
-        draw_list->AddText(text_pos, IM_COL32(255 - r_value, 255 - g_value, 255 - b_value, 255), sample_text);
-        ImGui::PopFont();
+        ImGui::ColorEdit4("Color", my_color);
 
         ImGui::EndTable();
 
         ImGui::PopFont();
 
-        // UI
+        // Externally drawn items
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImVec2 fps_text_pos = ImVec2(mainViewportPos.x + 25 * resizeRatio, mainViewportPos.y + 25 * resizeRatio);
 
         ImGui::End();
         ImGui::PopStyleColor();
