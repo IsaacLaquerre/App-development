@@ -25,6 +25,7 @@
       <Filter>sources</Filter>
     </ClInclude>
     <ClInclude Include="Application.h" />
+    <ClInclude Include="Popups.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\imgui.cpp">
@@ -52,6 +53,7 @@
       <Filter>imgui</Filter>
     </ClCompile>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="Popups.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.txt" />

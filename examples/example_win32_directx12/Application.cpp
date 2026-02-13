@@ -1,6 +1,9 @@
 #include "Application.h"
+#include "Popups.h"
 
 #include "imgui.h"
+#include "windef.h"
+#include "WinUser.h"
 
 #include <cstdio>
 #include <string>
@@ -16,27 +19,8 @@ struct ImGuiDemoDockspaceArgs
 
 namespace MyApp
 {
-    struct RGBA {
-        float r = 255.0f;
-        float g = 255.0f;
-        float b = 255.0f;
-        float a = 1.0f;
-
-        static ImVec4 RGBA::ToVec4(float r, float g, float b, float a)
-        {
-            return ImVec4(r * 1.0f / 255.0f, g * 1.0f / 255.0f, b * 1.0f / 255.0f, a);
-        }
-
-        static ImU32 RGBA::ToCol32(float r, float g, float b, float a)
-        {
-            return IM_COL32((int)r, (int)g, (int)b, (int)a);
-        }
-
-        static RGBA RGBA::Invert(float r, float g, float b, float a)
-        {
-            return { 255 - r, 255 - g, 255 - b, a };
-        }
-    };
+    int appWidth = 0;
+    int appHeight = 0;
 
     static void TextCentered(std::string text) {
         auto windowWidth = ImGui::GetWindowSize().x;
@@ -46,10 +30,23 @@ namespace MyApp
         ImGui::Text(text.c_str());
     }
 
+    Color background_colors[2] = {
+        { "Dark", RGBA::ToVec4(31.0f, 27.0f, 41.0f, 1.0f) },
+        { "Light", RGBA::ToVec4(255.0f, 255.0f, 255.0f, 1.0f) }
+    };
+    ImVec4 background_color;
+
+    Color font_colors[2] = {
+        { "Dark", RGBA::ToVec4(255.0f, 255.0f, 255.0f, 1.0f) },
+        { "Light", RGBA::ToVec4(0.0f, 0.0f, 0.0f, 1.0f) }
+    };
+    ImVec4 font_color;
+
     void RenderApp()
     {
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.ConfigViewportsNoAutoMerge = false;
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
 
         static ImFontConfig small_size_cfg;
         small_size_cfg.SizePixels = 15.0f;
@@ -61,8 +58,11 @@ namespace MyApp
         static ImFont* font_large = io.Fonts->AddFontDefault(&large_size_cfg);
         static ImFont* DroidSans_large = io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", large_size_cfg.SizePixels);
 
+        background_color = background_colors[static_cast<int>(MyApp::GetTheme())].value;
+        font_color = font_colors[static_cast<int>(MyApp::GetTheme())].value;
+
         // Make main window dockable
-        //ImGui::DockSpaceOverViewport(ImGui::GetID("Test"), ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+        //ImGui::DockSpaceOverViewport(ImGui::GetID("Test"), viewport, ImGuiDockNodeFlags_PassthruCentralNode);
 
         // Demo window code
         //static int opt_demo_mode = 0;
@@ -160,16 +160,17 @@ namespace MyApp
         // Custom "1 main window" rendering
 
         // Style handling
-        ImVec2 mainViewportSize = ImGui::GetMainViewport()->Size;
-        ImVec2 mainViewportPos = ImGui::GetMainViewport()->Pos;
+        ImVec2 mainViewportSize = viewport->Size;
+        ImVec2 mainViewportPos = viewport->Pos;
         static float windowScale = 0.9f;
         float windowSizeX = mainViewportSize.x * windowScale;
         float windowSizeY = mainViewportSize.y * windowScale;
         float windowPosX = mainViewportPos.x + (mainViewportSize.x - windowSizeX) / 2;
         float windowPosY = mainViewportPos.y + (mainViewportSize.y - windowSizeY) / 2;
-        float resizeRatio = mainViewportSize.x / 1280;
 
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, RGBA::ToVec4(0.0f, 0.0f, 0.0f, 0.15f));
+        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, background_color);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, RGBA::ToVec4(0.0f, 0.0f, 0.0f, 0.05f));
+        ImGui::PushStyleColor(ImGuiCol_Text, font_color);
         ImGui::SetNextWindowPos(ImVec2(windowPosX, windowPosY), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(windowSizeX, windowSizeY), ImGuiCond_Always);
 
@@ -177,8 +178,19 @@ namespace MyApp
         //style.TabRounding =  5.f;
         //style.FrameRounding = 5.f;
         //style.GrabRounding = 5.f;
+        style.ChildRounding = 5.f;
+        style.ScrollbarRounding = 5.f;
+        style.TabRounding = 5.f;
         style.WindowRounding = 5.f;
-        //style.PopupRounding = 5.f;
+        style.PopupRounding = 5.f;
+        style.Colors[ImGuiCol_MenuBarBg] = background_color;
+        style.Colors[ImGuiCol_WindowBg] = background_color;
+        style.Colors[ImGuiCol_PopupBg] = ImVec4(background_color.x, background_color.y, background_color.z, background_color.w - 0.15f);
+        style.Colors[ImGuiCol_TitleBg] = background_color;
+        style.Colors[ImGuiCol_TitleBgActive] = ImVec4(background_color.x, background_color.y, background_color.z, background_color.w);
+        style.Colors[ImGuiCol_Text] = font_color;
+        style.Colors[ImGuiCol_TitleBgCollapsed] = background_color;
+        style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.1f, 0.1f, 0.1f, 0.5f);
 
         ImGui::Begin("##Main",
             nullptr,
@@ -188,6 +200,35 @@ namespace MyApp
             ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoScrollbar
         );
+
+        // Menu bar
+
+        bool open_settings = false;
+
+        if (ImGui::BeginMainMenuBar())
+        {
+            if (ImGui::BeginMenu("Options"))
+            {
+                //ImGui::PushStyleColor(ImGuiCol_HeaderHovered, background_color);
+                ImGui::PushStyleColor(ImGuiCol_Header, background_color);
+                if (ImGui::MenuItem("Settings"))
+                {
+                    open_settings = true;
+                }
+                if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                ImGui::PopStyleColor();
+                ImGui::EndMenu();
+            }
+            if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+            ImGui::EndMainMenuBar();
+        }
+
+        bool menu_flags[1] = { open_settings };
+        bool* menu_flags_resp = RenderPopups(menu_flags);
+        for (int i = 0; i < sizeof(menu_flags_resp) - 7; i++)
+        {
+            menu_flags[i] = menu_flags_resp[i];
+        }
 
         // Title
         ImGui::PushFont(DroidSans_large);
@@ -223,6 +264,7 @@ namespace MyApp
         ImGui::Text("Value");
         ImGui::SameLine();
         ImGui::DragFloat("##Value", &value);
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
         ImGui::Separator();
         ImGui::Text("Value: %f", value);
 
@@ -235,9 +277,9 @@ namespace MyApp
         ImGui::BeginTable("Color picker", 2);
 
         ImGui::TableNextColumn();
-        static float my_color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        static float color_picker[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-        ImGui::ColorEdit4("Color", my_color);
+        ImGui::ColorEdit4("Color", color_picker);
 
         ImGui::EndTable();
 
@@ -257,9 +299,19 @@ namespace MyApp
 
 
         ImGui::End();
-        ImGui::PopStyleColor();
+        ImGui::PopStyleColor(3);
 
         // Show imgui_demo.cpp render
         // ImGui::ShowDemoWindow();
+    }
+
+    ImVec4 GetBackgroundColor()
+    {
+        return background_color;
+    }
+
+    ImVec4 GetFontColor()
+    {
+        return font_color;
     }
 }
