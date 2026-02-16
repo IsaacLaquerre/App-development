@@ -6,6 +6,8 @@
 #include "WinUser.h"
 
 #include <cstdio>
+#include <cmath>
+#include <ctime>
 #include <string>
 
 static bool show = true;
@@ -21,6 +23,15 @@ namespace MyApp
 {
     int appWidth = 0;
     int appHeight = 0;
+    ImVec2 window_size = ImVec2(1280, 800);
+    ImVec2 window_pos = ImVec2(100, 100);
+
+    bool fullscreen = false;
+    bool vsync = true;
+    bool showFps = true;
+
+    extern bool open_settings = false;
+    extern bool exit = false;
 
     static void TextCentered(std::string text) {
         auto windowWidth = ImGui::GetWindowSize().x;
@@ -30,23 +41,43 @@ namespace MyApp
         ImGui::Text(text.c_str());
     }
 
-    Color background_colors[2] = {
-        { "Dark", RGBA::ToVec4(31.0f, 27.0f, 41.0f, 1.0f) },
-        { "Light", RGBA::ToVec4(255.0f, 255.0f, 255.0f, 1.0f) }
+    struct Theme {
+        char* type;
+        ImVec4 background_color;
+        ImVec4 foreground_color;
+        ImVec4 font_color;
     };
-    ImVec4 background_color;
 
-    Color font_colors[2] = {
-        { "Dark", RGBA::ToVec4(255.0f, 255.0f, 255.0f, 1.0f) },
-        { "Light", RGBA::ToVec4(0.0f, 0.0f, 0.0f, 1.0f) }
+    Theme themes[2]{
+        { "Dark",
+            RGBA::ToVec4(53.0f, 53.0f, 62.0f, 1.0f),
+            RGBA::ToVec4(0.0f, 122.0f, 204.0f, 1.0f),
+            RGBA::ToVec4(255.0f, 255.0f, 255.0f, 1.0f)
+        },
+        { "Light",
+            RGBA::ToVec4(250.0f, 250.0f, 250.0f, 1.0f),
+            RGBA::ToVec4(147.0f, 148.0f, 165.0f, 1.0f),
+            RGBA::ToVec4(0.0f, 0.0f, 0.0f, 1.0f)
+        }
     };
+
+    ImVec4 background_color;
+    ImVec4 foreground_color;
     ImVec4 font_color;
+
+    enum class ThemeIndices {
+        Dark = 0,
+        Light = 1
+    };
+    int themeIndex = 0;
+    ThemeIndices theme = static_cast<ThemeIndices>(themeIndex);
 
     void RenderApp()
     {
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.ConfigViewportsNoAutoMerge = false;
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        window_size = viewport->Size;
 
         static ImFontConfig small_size_cfg;
         small_size_cfg.SizePixels = 15.0f;
@@ -58,8 +89,9 @@ namespace MyApp
         static ImFont* font_large = io.Fonts->AddFontDefault(&large_size_cfg);
         static ImFont* DroidSans_large = io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", large_size_cfg.SizePixels);
 
-        background_color = background_colors[static_cast<int>(MyApp::GetTheme())].value;
-        font_color = font_colors[static_cast<int>(MyApp::GetTheme())].value;
+        background_color = themes[static_cast<int>(MyApp::GetTheme())].background_color;
+        foreground_color = themes[static_cast<int>(MyApp::GetTheme())].foreground_color;
+        font_color = themes[static_cast<int>(MyApp::GetTheme())].font_color;
 
         // Make main window dockable
         //ImGui::DockSpaceOverViewport(ImGui::GetID("Test"), viewport, ImGuiDockNodeFlags_PassthruCentralNode);
@@ -168,9 +200,6 @@ namespace MyApp
         float windowPosX = mainViewportPos.x + (mainViewportSize.x - windowSizeX) / 2;
         float windowPosY = mainViewportPos.y + (mainViewportSize.y - windowSizeY) / 2;
 
-        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, background_color);
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, RGBA::ToVec4(0.0f, 0.0f, 0.0f, 0.05f));
-        ImGui::PushStyleColor(ImGuiCol_Text, font_color);
         ImGui::SetNextWindowPos(ImVec2(windowPosX, windowPosY), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(windowSizeX, windowSizeY), ImGuiCond_Always);
 
@@ -183,13 +212,23 @@ namespace MyApp
         style.TabRounding = 5.f;
         style.WindowRounding = 5.f;
         style.PopupRounding = 5.f;
+        style.Colors[ImGuiCol_Button] = foreground_color;
+        style.Colors[ImGuiCol_ButtonHovered] = ImVec4(foreground_color.x, foreground_color.y, foreground_color.z, foreground_color.w - 0.25f);
+        style.Colors[ImGuiCol_ButtonActive] = ImVec4(foreground_color.x, foreground_color.y, foreground_color.z, foreground_color.w - 0.5f);
+        style.Colors[ImGuiCol_MenuBarBg] = background_color;
+        style.Colors[ImGuiCol_Header] = foreground_color;
+        style.Colors[ImGuiCol_HeaderHovered] = ImVec4(foreground_color.x, foreground_color.y, foreground_color.z, foreground_color.w - 0.25f);
+        style.Colors[ImGuiCol_HeaderActive] = ImVec4(foreground_color.x, foreground_color.y, foreground_color.z, foreground_color.w - 0.5f);
         style.Colors[ImGuiCol_MenuBarBg] = background_color;
         style.Colors[ImGuiCol_WindowBg] = background_color;
-        style.Colors[ImGuiCol_PopupBg] = ImVec4(background_color.x, background_color.y, background_color.z, background_color.w - 0.15f);
+        style.Colors[ImGuiCol_PopupBg] = ImVec4(background_color.x, background_color.y, background_color.z, background_color.w - 0.05f);
         style.Colors[ImGuiCol_TitleBg] = background_color;
         style.Colors[ImGuiCol_TitleBgActive] = ImVec4(background_color.x, background_color.y, background_color.z, background_color.w);
-        style.Colors[ImGuiCol_Text] = font_color;
         style.Colors[ImGuiCol_TitleBgCollapsed] = background_color;
+        style.Colors[ImGuiCol_InputTextCursor] = font_color;
+        style.Colors[ImGuiCol_SliderGrab] = foreground_color;
+        style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(foreground_color.x, foreground_color.y, foreground_color.z, foreground_color.w - 0.25f);
+        style.Colors[ImGuiCol_Text] = font_color;
         style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.1f, 0.1f, 0.1f, 0.5f);
 
         ImGui::Begin("##Main",
@@ -203,32 +242,41 @@ namespace MyApp
 
         // Menu bar
 
-        bool open_settings = false;
-
         if (ImGui::BeginMainMenuBar())
         {
             if (ImGui::BeginMenu("Options"))
             {
-                //ImGui::PushStyleColor(ImGuiCol_HeaderHovered, background_color);
-                ImGui::PushStyleColor(ImGuiCol_Header, background_color);
                 if (ImGui::MenuItem("Settings"))
                 {
                     open_settings = true;
                 }
                 if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                ImGui::PopStyleColor();
+
+                if (ImGui::MenuItem("Exit"))
+                {
+                    exit = true;
+                }
+                if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                ImGui::EndMenu();
+            }
+            if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+
+            if (ImGui::BeginMenu("Credits"))
+            {
+                ImGui::Text("Made by Isaac Laquerre");
+                std::time_t t = std::time(nullptr);
+                std::tm *const pTInfo = std::localtime(&t);
+                int currYear = 1900 + pTInfo->tm_year;
+                std::string currYearVerbose = "Copyright © ";
+                currYearVerbose += std::to_string(currYear);
+                ImGui::Text(currYearVerbose.c_str());
                 ImGui::EndMenu();
             }
             if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
             ImGui::EndMainMenuBar();
         }
 
-        bool menu_flags[1] = { open_settings };
-        bool* menu_flags_resp = RenderPopups(menu_flags);
-        for (int i = 0; i < sizeof(menu_flags_resp) - 7; i++)
-        {
-            menu_flags[i] = menu_flags_resp[i];
-        }
+        RenderPopups();
 
         // Title
         ImGui::PushFont(DroidSans_large);
@@ -285,24 +333,36 @@ namespace MyApp
 
         ImGui::PopFont();
 
+
         // Externally drawn items
 
         // Background (viewport) draw list
-        ImDrawList* viewport_draw_list = ImGui::GetBackgroundDrawList();
-        ImVec2 fps_text_pos = ImVec2(5, 5);
-        std::string fps_text_string = "FPS: " + std::to_string(io.Framerate) + "\n";
-        const char* fps_text = fps_text_string.c_str();
-        viewport_draw_list->AddText(fps_text_pos, IM_COL32(255, 255, 0, 255), fps_text);
+        ImDrawList* viewport_background_draw_list = ImGui::GetBackgroundDrawList();
+
+        // Foreground (viewport) draw list
+        ImDrawList* viewport_foreground_draw_list = ImGui::GetForegroundDrawList();
+        if (MyApp::GetShowFps())
+        {
+
+            // Draw FPS
+            std::string fps_text_string = "FPS: " + std::to_string((int)std::floor(io.Framerate));
+            const char* fps_text = fps_text_string.c_str();
+            ImVec2 fps_text_size = ImGui::CalcTextSize(fps_text);
+            ImVec2 fps_text_pos = ImVec2(mainViewportSize.x - 70, 3.0f);
+            ImU32 fps_color = static_cast<int>(MyApp::GetTheme()) == 0 ? IM_COL32(255, 255, 0, 255) : IM_COL32(255, 0, 0, 255);
+            //ImGui::PushClipRect(window_pos, ImVec2(fps_text_pos.x + fps_text_size.x, fps_text_pos.y + fps_text_size.y), true);
+            viewport_foreground_draw_list->AddText(fps_text_pos, fps_color, fps_text);
+            //ImGui::PopClipRect();
+        }
 
         // Window module draw list
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
 
         ImGui::End();
-        ImGui::PopStyleColor(3);
 
         // Show imgui_demo.cpp render
-        // ImGui::ShowDemoWindow();
+        //ImGui::ShowDemoWindow();
     }
 
     ImVec4 GetBackgroundColor()
@@ -313,5 +373,51 @@ namespace MyApp
     ImVec4 GetFontColor()
     {
         return font_color;
+    }
+
+    // Handle fullscreen/windowed logic
+    extern void ToggleFullscreen()
+    {
+        fullscreen = !fullscreen;
+    }
+
+    bool GetFullscreen()
+    {
+        return fullscreen;
+    }
+
+    // Handle theme toggle logic
+    extern void ToggleTheme()
+    {
+        themeIndex++;
+        if (themeIndex > 1) themeIndex = 0;
+        theme = static_cast<ThemeIndices>(themeIndex);
+    }
+
+    ThemeIndices GetTheme()
+    {
+        return theme;
+    }
+
+    // Handle vsync toggle logic
+    extern void ToggleVsync()
+    {
+        vsync = !vsync;
+    }
+
+    // Handle fps toggle logic
+    extern void ToggleShowFps()
+    {
+        showFps = !showFps;
+    }
+
+    bool GetVsync()
+    {
+        return vsync;
+    }
+
+    bool GetShowFps()
+    {
+        return showFps;
     }
 }

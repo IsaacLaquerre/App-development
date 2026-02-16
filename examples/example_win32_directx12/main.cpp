@@ -205,36 +205,81 @@ int main(int, char**)
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
     //IM_ASSERT(font != nullptr);
 
-    // Our state
-    bool show_demo_window = true;
-    bool show_another_window = false;
-
-    struct RGBA {
-        float r = 255.0f;
-        float g = 255.0f;
-        float b = 255.0f;
-        float a = 1.0f;
-
-        static ImVec4 RGBA::ToVec4(float r, float g, float b, float a)
-        {
-            return ImVec4(r * 1.0f / 255.0f, g * 1.0f / 255.0f, b * 1.0f / 255.0f, a);
-        }
-    };
-
     struct Theme {
         char* type;
         ImVec4 value;
     };
 
     Theme themes[2] = {
-        { "Dark", RGBA::ToVec4(31.0f, 27.0f, 41.0f, 1.0f) },
-        { "Light", RGBA::ToVec4(255.0f, 255.0f, 255.0f, 1.0f) }
+        { "Dark", MyApp::RGBA::ToVec4(31.0f, 27.0f, 41.0f, 1.0f) },
+        { "Light", MyApp::RGBA::ToVec4(255.0f, 255.0f, 255.0f, 1.0f) }
     };
+
+    bool wasFullscreen = MyApp::GetFullscreen();
+    ImVec2 previousRes = { 1280 * main_scale, 800 * main_scale };
+    ImVec2 previousPos = { 100, 100 };
 
     // Main loop
     bool done = false;
     while (!done)
     {
+        MONITORINFO mi = { sizeof(mi) };
+        GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &mi);
+
+        LONG_PTR windowStyle = GetWindowLongPtr(hwnd, GWL_STYLE);
+
+        // Calculate width and height
+        int monitorWidth = mi.rcMonitor.right - mi.rcMonitor.left;
+        int monitorHeight = mi.rcMonitor.bottom - mi.rcMonitor.top;
+
+        // Handle fullscreen logic
+        if (MyApp::GetFullscreen())
+        {
+
+            if (!wasFullscreen)
+            {
+                wasFullscreen = true;
+
+                // Remove title bar
+                windowStyle &= ~WS_CAPTION;
+                SetWindowLongPtr(hwnd, GWL_STYLE, windowStyle);
+                SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
+
+                RECT rect;
+                if (GetWindowRect(hwnd, &rect))
+                {
+                    // Save window parameters
+                    previousRes = { static_cast<float>(rect.right - rect.left), static_cast<float>(rect.bottom - rect.top) };
+                    previousPos = { static_cast<float>(rect.left), static_cast<float>(rect.top) };
+                }
+
+                // Lock window to monitor borders and disable moving
+                MoveWindow(hwnd, mi.rcMonitor.left, mi.rcMonitor.top, monitorWidth, monitorHeight, TRUE);
+                RemoveMenu(GetSystemMenu(hwnd, 0), SC_MOVE, MF_BYCOMMAND);
+
+                // Refresh window
+                SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            }
+        } else {
+
+            if (wasFullscreen)
+            {
+                wasFullscreen = false;
+
+                // Add title bar
+                windowStyle |= WS_CAPTION;
+                SetWindowLongPtr(hwnd, GWL_STYLE, windowStyle);
+                SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) | WS_MAXIMIZEBOX | WS_SIZEBOX);
+
+                // Resize window to previous position/resolution and reset the system menu to its default state
+                GetSystemMenu(hwnd, TRUE);
+                MoveWindow(hwnd, previousPos.x, previousPos.y, previousRes.x, previousRes.y, TRUE);
+
+                // Refresh window
+                SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            }
+        }
+
         ImVec4 background_color = themes[static_cast<int>(MyApp::GetTheme())].value;
 
         // Poll and handle messages (inputs, window resize, etc.)
@@ -307,10 +352,19 @@ int main(int, char**)
         frameCtx->FenceValue = g_fenceLastSignaledValue;
 
         // Present
-        //HRESULT hr = g_pSwapChain->Present(1, 0);   // Present with vsync
-        HRESULT hr = g_pSwapChain->Present(0, g_SwapChainTearingSupport ? DXGI_PRESENT_ALLOW_TEARING : 0); // Present without vsync
+        HRESULT hr;
+        if (MyApp::GetVsync()) hr = g_pSwapChain->Present(1, 0);   // Present with vsync
+        else hr = g_pSwapChain->Present(0, g_SwapChainTearingSupport ? DXGI_PRESENT_ALLOW_TEARING : 0); // Present without vsync
         g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
         g_frameIndex++;
+
+        // Key presses
+        if (ImGui::IsKeyPressed(ImGuiKey_F11))
+        {
+            MyApp::ToggleFullscreen();
+        }
+
+        if (MyApp::exit) DestroyWindow(hwnd);
     }
 
     WaitForPendingOperations();
