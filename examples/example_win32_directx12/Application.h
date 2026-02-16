@@ -34,6 +34,22 @@ namespace MyApp
         ImVec4 value;
     };
 
-    extern ImVec4 GetBackgroundColor();
-    extern ImVec4 GetFontColor();
+    ImVec4 GetBackgroundColor();
+    ImVec4 GetFontColor();
+
+    extern bool open_settings;
+    extern bool exit;
+
+    void ToggleFullscreen();
+    bool GetFullscreen();
+
+    enum class ThemeIndices;
+    void ToggleTheme();
+    ThemeIndices GetTheme();
+
+    void ToggleVsync();
+    bool GetVsync();
+
+    void ToggleShowFps();
+    bool GetShowFps();
 }
