@@ -26,6 +26,7 @@
     </ClInclude>
     <ClInclude Include="Application.h" />
     <ClInclude Include="Popups.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\imgui.cpp">
@@ -65,5 +66,12 @@
     <Natvis Include="..\..\misc\debuggers\imgui.natvis">
       <Filter>imgui</Filter>
     </Natvis>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="icon.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon.ico" />
+    <Image Include="icon1.ico" />
   </ItemGroup>
 </Project>
