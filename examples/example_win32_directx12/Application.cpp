@@ -85,9 +85,9 @@ namespace MyApp
         large_size_cfg.SizePixels = 24.0f;
 
         static ImFont* font_small = io.Fonts->AddFontDefault(&small_size_cfg);
-        static ImFont* DroidSans_small = io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", small_size_cfg.SizePixels);
+        static ImFont* DroidSans_small = io.Fonts->AddFontFromFileTTF("./DroidSans.ttf", small_size_cfg.SizePixels);
         static ImFont* font_large = io.Fonts->AddFontDefault(&large_size_cfg);
-        static ImFont* DroidSans_large = io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", large_size_cfg.SizePixels);
+        static ImFont* DroidSans_large = io.Fonts->AddFontFromFileTTF("./DroidSans.ttf", large_size_cfg.SizePixels);
 
         background_color = themes[static_cast<int>(MyApp::GetTheme())].background_color;
         foreground_color = themes[static_cast<int>(MyApp::GetTheme())].foreground_color;
